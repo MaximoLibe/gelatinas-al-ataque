@@ -2561,8 +2561,24 @@ const RK = { db: null, myId: null, scores: null, state: 'loading', canWrite: nul
 const getNick = () => { try { return (localStorage.getItem('gel-apodo') || '').trim(); } catch (e) { return ''; } };
 const setNick = n => { try { localStorage.setItem('gel-apodo', n); } catch (e) {} };
 
+// Ranking de la versión web (GitHub): Firebase con jugadores anónimos. Los datos de abajo son públicos por diseño;
+// la seguridad la dan las reglas de Firestore (cada jugador solo escribe su propio puntaje).
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyBA2CWW6nqZYhgph19e9emZ5j8fr2MUKv8',
+  authDomain: 'gelatinas-al-ataque.firebaseapp.com',
+  projectId: 'gelatinas-al-ataque',
+  storageBucket: 'gelatinas-al-ataque.firebasestorage.app',
+  messagingSenderId: '1027735086617',
+  appId: '1:1027735086617:web:58021679524e2bbb69ec88'
+};
+const FB_VERSION = '10.12.2';
+
 async function initOnline() {
-  if (!window.claude || typeof window.claude.use !== 'function') { RK.state = 'offline'; renderRankAll(); return; }
+  if (window.claude && typeof window.claude.use === 'function') return initClaudeRanking();
+  if (FIREBASE_CONFIG && /^https?:$/.test(location.protocol)) return initFirebaseRanking();
+  RK.state = 'offline'; renderRankAll();
+}
+async function initClaudeRanking() {
   let db = null, user = null;
   try { [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) {}
   if (!db || !user) { RK.state = 'offline'; renderRankAll(); return; }
@@ -2571,8 +2587,27 @@ async function initOnline() {
   const can = await user.can('data.write');
   if (can === false) RK.canWrite = false;
   RK.db = db;
+  subscribeScores();
+}
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+async function initFirebaseRanking() {
+  RK.backend = 'firebase';
+  try {
+    const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
+    await loadScript(base + 'firebase-app-compat.js');
+    await Promise.all([loadScript(base + 'firebase-auth-compat.js'), loadScript(base + 'firebase-firestore-compat.js')]);
+    window.firebase.initializeApp(FIREBASE_CONFIG);
+    const cred = await window.firebase.auth().signInAnonymously();
+    RK.myId = cred.user.uid;
+    RK.db = window.firebase.firestore();
+    subscribeScores();
+  } catch (e) { RK.state = 'error'; renderRankAll(); }
+}
+function subscribeScores() {
   const timer = setTimeout(() => { if (!RK.scores) { RK.state = 'slow'; renderRankAll(); } }, 10000);
-  db.collection('scores').onSnapshot(snap => {
+  RK.db.collection('scores').onSnapshot(snap => {
     if (!snap.metadata.fromCache) clearTimeout(timer);
     RK.scores = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
     RK.state = 'ok'; renderRankAll();
@@ -2596,8 +2631,9 @@ async function submitScore() {
     await RK.db.doc('scores/' + RK.myId).set({ name: nick.slice(0, 16), days });
     RK.canWrite = true;
   } catch (e) {
-    if (e && e.code === 'invalid_argument') RK.canWrite = false;
-    else if (e && e.code === 'quota_exceeded') toast('El ranking está lleno');
+    if (e && e.code === 'invalid_argument' && RK.backend !== 'firebase') RK.canWrite = false;
+    else if (e && (e.code === 'quota_exceeded' || e.code === 'resource-exhausted')) toast('El ranking está lleno por hoy');
+    else toast('No se pudo guardar en el ranking. Probá de nuevo más tarde.');
   } finally {
     RK.writing = false; renderRankAll();
     if (RK.again) { RK.again = false; submitScore(); }

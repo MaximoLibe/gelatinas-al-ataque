@@ -18,4 +18,8 @@ Atajos: teclas 1 a 6 para elegir torre, Espacio para empezar la ronda, F para ca
 ## Notas
 
 - El progreso y las estadísticas se guardan en el navegador.
-- El ranking compartido solo funciona en la versión publicada en Claude; en este archivo se muestra un aviso.
+- Si abrís el archivo directamente desde la compu (sin servidor), el ranking no se conecta.
+
+## Ranking
+
+La versión publicada en GitHub Pages guarda el ranking en Firebase (Firestore) con jugadores anónimos. Las reglas de seguridad están en `firestore.rules`: todos pueden leer el ranking y cada jugador solo puede escribir su propio puntaje.

@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Ranking: todos leen; cada jugador (anónimo) solo crea o cambia su propio documento
+    match /scores/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'days'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 16
+        && request.resource.data.days is map
+        && request.resource.data.days.size() <= 400;
+      allow delete: if false;
+    }
+  }
+}
