@@ -182,6 +182,39 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
 .rank-status { font-size: 13px; color: var(--ink-soft); margin: 6px 0; }
 .rank-day { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 
+/* Panel de mejoras: flota sobre el mapa, compacto, sin barras de desplazamiento */
+.board { align-self: center; width: 100%; max-width: 100%; }
+.info { position: absolute; z-index: 4; top: 8px; width: min(300px, 47%); max-height: calc(100% - 16px); padding: 9px; gap: 6px; overflow: hidden; box-shadow: 0 4px 0 var(--ink), 0 10px 24px rgba(20,30,50,.25); }
+.info.right { right: 8px; }
+.info.left { left: 8px; }
+.info.sheet { left: 6px; right: 6px; width: auto; top: auto; bottom: 6px; max-height: calc(100% - 12px); }
+.info.sheet.top { top: 6px; bottom: auto; }
+.info .info-head canvas { width: 42px; height: 42px; }
+.info .info-head h3 { font-size: 18px; line-height: 1; }
+.info .info-head small { font-size: 11.5px; }
+.info .sec-t { font-size: 14.5px; padding-top: 5px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.info .sec-t span { font-family: var(--body); font-size: 10.5px; color: var(--ink-soft); font-weight: 700; letter-spacing: 0; }
+.info .high-note { font-size: 11.5px; padding: 3px 7px; }
+.opts3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.oc { display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; background: #fff; border: 2.5px solid var(--ink); border-radius: 11px; padding: 4px 3px 5px; box-shadow: 0 3px 0 var(--ink); min-width: 0; }
+.oc:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.oc:disabled { opacity: .5; cursor: not-allowed; }
+.oc canvas { width: 36px; height: 36px; }
+.oc b { font-family: var(--display); font-weight: 400; font-size: 12.5px; line-height: 1.05; letter-spacing: .01em; }
+.oc span { font-size: 10.5px; color: var(--ink-soft); line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.oc em { font-style: normal; font-family: var(--display); font-size: 14px; color: #1f7a33; margin-top: auto; }
+.up.slim { flex-direction: row; align-items: center; gap: 8px; min-height: 0; padding: 6px 9px; }
+.up.slim .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.up.slim .up-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.info .up.done { min-height: 0; padding: 6px 9px; }
+.info .info-row .btn { font-size: 14px; padding: 5px 8px; }
+.info.short { bottom: auto; }
+.info.tight .oc span { display: none; }
+.info.tight .oc canvas { width: 30px; height: 30px; }
+.info.tight .up.slim .up-desc { -webkit-line-clamp: 1; }
+.info.tighter .oc canvas, .info.tighter .sec-t span, .info.tighter .high-note { display: none; }
+.info.tighter .info-head canvas { width: 32px; height: 32px; }
+
 /* Jugo: combo, golpe al perder vidas, entradas animadas */
 .combo { position: absolute; right: 12px; top: 10px; font-family: var(--display); font-size: 24px; color: #ffd43b; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); pointer-events: none; }
 .combo.pulse { animation: comboPulse .3s ease-out; }
@@ -322,6 +355,7 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
         <div class="combo" id="combo" hidden>Combo ×10</div>
         <div class="banner" id="banner"></div>
         <div class="toast" id="toast" style="opacity:0"></div>
+        <div class="panel info" id="info" hidden></div>
         <div class="overlay" id="overlay" hidden></div>
       </div>
 
@@ -339,7 +373,6 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
         <div class="shop" id="shop"></div>
         <p class="tip" id="tip">Elegí una torre y tocá el mapa para ubicarla.</p>
       </div>
-      <div class="panel" id="info" hidden></div>
     </aside>
   </div>
 </div>
@@ -1493,8 +1526,19 @@ function applyView(g, ox, oy) {
 function upright(g) { if (ROT) g.rotate(-Math.PI / 2); }
 
 function resize() {
-  const w = cv.parentElement.clientWidth;
-  ROT = w < 640 && window.innerWidth <= 900;
+  const board = cv.parentElement, stage = board.parentElement;
+  const availW = stage.clientWidth;
+  ROT = availW < 640 && window.innerWidth <= 900;
+  // En compu el mapa se achica para que todo entre en la ventana sin bajar
+  if (!ROT && window.innerWidth > 900) {
+    const top = board.getBoundingClientRect().top + window.scrollY;
+    const ctr = document.querySelector('.controls'), nx = document.getElementById('next');
+    const below = (ctr ? ctr.offsetHeight : 60) + (nx ? Math.max(nx.offsetHeight, 22) : 22) + 20 + 28;
+    const maxH = window.innerHeight - top - below;
+    const outer = Math.max(460, Math.min(availW, (maxH - 6) * LW / LH + 6));
+    board.style.width = Math.floor(outer) + 'px';
+  } else board.style.width = '';
+  const w = board.clientWidth;
   DPR = Math.min(2, window.devicePixelRatio || 1);
   K = w / (ROT ? LH : LW);
   const h = ROT ? K * LW : K * LH;
@@ -1655,57 +1699,122 @@ function drawTower(g, key, x, y, angle, tiers, spin, alpha, high, tw) {
   if (key === 'barco') {
     g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 2; g.beginPath(); g.ellipse(0, 3, r * 1.35, r * 0.75, 0, 0, Math.PI * 2); g.stroke();
   } else { g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(2, r * 0.45, r * 1.05, r * 0.6, 0, 0, Math.PI * 2); g.fill(); }
-  g.lineWidth = 2.5; g.strokeStyle = '#22304a'; g.lineJoin = 'round';
+  g.lineWidth = 2.5; g.strokeStyle = '#22304a'; g.lineJoin = 'round'; g.lineCap = 'round';
+  // Cada rama de mejora tiene su propio diseño; al nivel 3 suma un detalle dorado
+  const m = tw && tw.tiers[0] > 0 ? tw.mode : -1, gold = !!tw && tw.tiers[0] >= 3;
+  const TAU = Math.PI * 2, INK = '#22304a';
+  const disc = (fill, rr) => { g.fillStyle = fill; g.beginPath(); g.arc(0, 0, rr || r, 0, TAU); g.fill(); g.stroke(); };
+  const trim = () => { if (gold) { g.strokeStyle = '#ffc933'; g.lineWidth = 2.5; g.beginPath(); g.arc(0, 0, r - 2.5, 0, TAU); g.stroke(); g.strokeStyle = INK; g.lineWidth = 2.5; } };
+  const line2 = (pts, c, w) => { for (const [col, lw] of [[INK, w + 2.6], [c, w]]) { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); pts.forEach(([a, b], i) => i ? g.lineTo(a, b) : g.moveTo(a, b)); g.stroke(); } g.strokeStyle = INK; g.lineWidth = 2.5; };
+  const spikes = (n, len, col, wid) => { g.fillStyle = col; for (let i = 0; i < n; i++) { const a = i * TAU / n; g.beginPath(); g.moveTo(Math.cos(a - wid) * r * 0.8, Math.sin(a - wid) * r * 0.8); g.lineTo(Math.cos(a) * r * len, Math.sin(a) * r * len); g.lineTo(Math.cos(a + wid) * r * 0.8, Math.sin(a + wid) * r * 0.8); g.closePath(); g.fill(); g.stroke(); } };
   if (key === 'honda') {
-    g.fillStyle = '#d4955a'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = '#b97a42'; g.beginPath(); g.arc(0, 0, r * 0.62, 0, Math.PI * 2); g.fill();
+    disc(m === 2 ? '#e2643b' : m === 0 ? '#e0a35a' : '#d4955a'); trim();
+    g.fillStyle = m === 2 ? '#ffb02e' : m === 0 ? '#c98a3a' : '#b97a42'; g.beginPath(); g.arc(0, 0, r * 0.6, 0, TAU); g.fill();
     g.rotate(angle);
-    g.strokeStyle = '#22304a'; g.lineWidth = 6; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(-6, 0); g.lineTo(3, 0); g.moveTo(3, 0); g.lineTo(11, -8); g.moveTo(3, 0); g.lineTo(11, 8); g.stroke();
-    g.strokeStyle = '#8a5a2b'; g.lineWidth = 3.4;
-    g.beginPath(); g.moveTo(-6, 0); g.lineTo(3, 0); g.moveTo(3, 0); g.lineTo(11, -8); g.moveTo(3, 0); g.lineTo(11, 8); g.stroke();
-    g.strokeStyle = '#ff5a5a'; g.lineWidth = 2; g.beginPath(); g.moveTo(11, -8); g.quadraticCurveTo(5, 0, 11, 8); g.stroke();
+    if (m === 0) { // Ráfaga: dos gomeras con elástico azul
+      for (const o of [-4, 4]) { line2([[-6, o], [2, o], [10, o - 6]], '#8a5a2b', 3); line2([[2, o], [10, o + 6]], '#8a5a2b', 3); g.strokeStyle = '#4f95ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(10, o - 6); g.quadraticCurveTo(5, o, 10, o + 6); g.stroke(); }
+    } else if (m === 1) { // Perdigones: tridente ancho
+      const n = gold ? 5 : 3;
+      for (let i = 0; i < n; i++) { const t = n === 1 ? 0 : i / (n - 1) - 0.5; line2([[1, 0], [12, t * 22]], '#8a5a2b', 3); }
+      line2([[-7, 0], [1, 0]], '#8a5a2b', 3.4);
+      g.fillStyle = '#5c5f66'; for (const t of [-5, 0, 5]) { g.beginPath(); g.arc(7, t, 2, 0, TAU); g.fill(); }
+    } else { // Base y piedra explosiva
+      line2([[-6, 0], [3, 0], [11, -8]], '#8a5a2b', 3.4); line2([[3, 0], [11, 8]], '#8a5a2b', 3.4);
+      g.strokeStyle = '#ff5a5a'; g.lineWidth = 2; g.beginPath(); g.moveTo(11, -8); g.quadraticCurveTo(5, 0, 11, 8); g.stroke();
+      if (m === 2) { g.fillStyle = '#ff7a1a'; g.beginPath(); g.arc(7, 0, 4.5, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#fff3a0'; g.beginPath(); g.arc(6, -1.5, 1.6 + Math.sin(VT * 18) * 0.6, 0, TAU); g.fill(); }
+    }
   } else if (key === 'erizo') {
     g.save(); g.rotate(spin || 0);
-    g.fillStyle = '#6b4a2e';
-    for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; g.beginPath(); g.moveTo(Math.cos(a - 0.22) * r * 0.8, Math.sin(a - 0.22) * r * 0.8); g.lineTo(Math.cos(a) * r * 1.28, Math.sin(a) * r * 1.28); g.lineTo(Math.cos(a + 0.22) * r * 0.8, Math.sin(a + 0.22) * r * 0.8); g.closePath(); g.fill(); g.stroke(); }
+    if (m === 0) spikes(16, gold ? 1.55 : 1.45, gold ? '#b8862a' : '#4a321d', 0.16);
+    else if (m === 1) { spikes(10, 1.3 + Math.sin(VT * 12) * 0.06, '#ff7a1a', 0.26); g.fillStyle = '#ffd23f'; for (let i = 0; i < 10; i++) { const a = i * TAU / 10; g.beginPath(); g.arc(Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02, 2.2, 0, TAU); g.fill(); } }
+    else if (m === 2) spikes(10, 1.32, '#5a7fa8', 0.2);
+    else spikes(10, 1.28, '#6b4a2e', 0.22);
     g.restore();
-    g.fillStyle = '#a77b52'; g.beginPath(); g.arc(0, 0, r * 0.88, 0, Math.PI * 2); g.fill(); g.stroke();
+    disc(m === 1 ? '#e8643a' : m === 2 ? '#8fa3b8' : '#a77b52', r * 0.88);
+    if (gold) { g.strokeStyle = '#ffc933'; g.lineWidth = 2.5; g.beginPath(); g.arc(0, 0, r * 0.7, 0, TAU); g.stroke(); g.strokeStyle = INK; }
     upright(g);
-    g.fillStyle = '#f3d7b4'; g.beginPath(); g.ellipse(0, 3, r * 0.5, r * 0.42, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#22304a'; g.beginPath(); g.arc(-5, -3, 2.3, 0, Math.PI * 2); g.arc(5, -3, 2.3, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(0, 4, 2.6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = m === 1 ? '#ffd6b0' : '#f3d7b4'; g.beginPath(); g.ellipse(0, 3, r * 0.5, r * 0.42, 0, 0, TAU); g.fill();
+    g.fillStyle = INK; g.beginPath(); g.arc(-5, -3, 2.3, 0, TAU); g.arc(5, -3, 2.3, 0, TAU); g.fill();
+    g.beginPath(); g.arc(0, 4, 2.6, 0, TAU); g.fill();
+    if (m === 2) { g.lineWidth = 2; g.beginPath(); g.moveTo(0, -r * 0.8); g.lineTo(0, -r * 1.25); g.stroke(); g.fillStyle = Math.sin(VT * 8) > 0 ? '#ff5a5a' : '#ffd23f'; g.beginPath(); g.arc(0, -r * 1.3, 3, 0, TAU); g.fill(); g.stroke(); }
   } else if (key === 'mortero') {
-    g.fillStyle = '#9aa4b2'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = '#7d8796'; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.beginPath(); g.arc(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, 2, 0, Math.PI * 2); g.fill(); }
+    disc(m === 2 ? '#a9d18e' : m === 0 ? '#7d8796' : '#9aa4b2'); trim();
+    g.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.beginPath(); g.arc(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, 2, 0, TAU); g.fill(); }
     g.rotate(angle);
-    g.fillStyle = '#2d3440'; g.beginPath(); g.rect(-4, -7, 22, 14); g.fill(); g.stroke();
-    g.fillStyle = '#495363'; g.fillRect(14, -8, 5, 16);
-    g.fillStyle = '#2d3440'; g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); g.fill(); g.stroke();
+    if (m === 0) { // Bomba grande: caño ancho
+      g.fillStyle = '#2d3440'; g.beginPath(); g.rect(-6, -10, 24, 20); g.fill(); g.stroke(); g.fillStyle = '#495363'; g.fillRect(15, -11, 6, 22);
+      g.fillStyle = '#2d3440'; g.beginPath(); g.arc(-1, 0, 10, 0, TAU); g.fill(); g.stroke();
+    } else if (m === 1) { // Racimo: tres caños
+      for (const a of [-0.42, 0, 0.42]) { g.save(); g.rotate(a); g.fillStyle = '#2d3440'; g.beginPath(); g.rect(0, -3.5, 19, 7); g.fill(); g.stroke(); g.fillStyle = '#495363'; g.fillRect(16, -4.5, 4, 9); g.restore(); }
+      g.fillStyle = '#2d3440'; g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.fill(); g.stroke();
+    } else {
+      const c = m === 2 ? '#3f8f3a' : '#2d3440';
+      g.fillStyle = c; g.beginPath(); g.rect(-4, -7, 22, 14); g.fill(); g.stroke();
+      g.fillStyle = m === 2 ? '#6fd06a' : '#495363'; g.fillRect(14, -8, 5, 16);
+      g.fillStyle = c; g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.fill(); g.stroke();
+      if (m === 2) { g.fillStyle = '#7ee07a'; for (const [dx, dy] of [[8, 8], [13, 9.5], [4, -8.5]]) { g.beginPath(); g.ellipse(dx, dy, 2.2, 3.2, 0, 0, TAU); g.fill(); } }
+    }
   } else if (key === 'escarcha') {
-    g.fillStyle = '#d8f3ff'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.stroke();
+    disc(m === 2 ? '#e6eef5' : m === 1 ? '#bfe6ff' : '#d8f3ff'); trim();
     g.rotate((spin || 0) * 0.3);
-    g.fillStyle = '#69c9f2'; g.beginPath();
-    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 2; g.lineTo(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78); }
-    g.closePath(); g.fill(); g.stroke();
-    g.strokeStyle = '#fff'; g.lineWidth = 2;
-    g.beginPath(); for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3 - Math.PI / 2; g.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6); g.lineTo(-Math.cos(a) * r * 0.6, -Math.sin(a) * r * 0.6); } g.stroke();
+    if (m === 0) { // Congelar: copo grande
+      g.strokeStyle = '#4fa8d8'; g.lineWidth = 3;
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; const ex = Math.cos(a) * r * 0.85, ey = Math.sin(a) * r * 0.85; g.beginPath(); g.moveTo(0, 0); g.lineTo(ex, ey); g.moveTo(ex * 0.55 + Math.cos(a + 1) * 4, ey * 0.55 + Math.sin(a + 1) * 4); g.lineTo(ex * 0.55, ey * 0.55); g.lineTo(ex * 0.55 + Math.cos(a - 1) * 4, ey * 0.55 + Math.sin(a - 1) * 4); g.stroke(); }
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, 3.5, 0, TAU); g.fill();
+    } else if (m === 1) { // Campo lento: remolino
+      g.rotate(VT * 2);
+      g.strokeStyle = '#4fa8d8'; g.lineWidth = 3;
+      for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(0, 0, r * (0.3 + k * 0.22), k * 2, k * 2 + Math.PI * 1.3); g.stroke(); }
+    } else if (m === 2) { // Granizo: nubecita con piedras de hielo
+      g.rotate(-(spin || 0) * 0.3); upright(g);
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(-5, -1, 6, 0, TAU); g.arc(2, -4, 7, 0, TAU); g.arc(7, 1, 5, 0, TAU); g.fill();
+      g.strokeStyle = '#8aa0b4'; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = '#8fd6f5'; for (const [dx, dy] of [[-5, 8], [1, 10], [6, 7.5]]) { g.beginPath(); g.arc(dx, dy + Math.sin(VT * 6 + dx) * 1, 2, 0, TAU); g.fill(); }
+    } else {
+      g.fillStyle = '#69c9f2'; g.beginPath();
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 - Math.PI / 2; g.lineTo(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78); }
+      g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = '#fff'; g.lineWidth = 2;
+      g.beginPath(); for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3 - Math.PI / 2; g.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6); g.lineTo(-Math.cos(a) * r * 0.6, -Math.sin(a) * r * 0.6); } g.stroke();
+    }
   } else if (key === 'vigia') {
-    if (high) { g.strokeStyle = '#ffc933'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r + 4, 0, Math.PI * 2); g.stroke(); g.strokeStyle = '#22304a'; g.lineWidth = 2.5; }
-    g.fillStyle = '#7a9a45'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = '#a7c46a'; g.fillRect(-9, -9, 18, 18); g.strokeRect(-9, -9, 18, 18);
+    if (high) { g.strokeStyle = '#ffc933'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r + 4, 0, TAU); g.stroke(); g.strokeStyle = INK; g.lineWidth = 2.5; }
+    disc(m === 2 ? '#4b6b8a' : m === 0 ? '#5f7a35' : '#7a9a45'); trim();
+    g.fillStyle = m === 2 ? '#7fa3c4' : '#a7c46a'; g.fillRect(-9, -9, 18, 18); g.strokeRect(-9, -9, 18, 18);
     g.rotate(angle);
-    g.strokeStyle = '#22304a'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(-4, 0); g.lineTo(22, 0); g.stroke();
-    g.fillStyle = '#22304a'; g.fillRect(2, -5, 8, 4);
-    g.fillStyle = '#4b5d2a'; g.beginPath(); g.arc(-2, 0, 6, 0, Math.PI * 2); g.fill(); g.lineWidth = 2; g.stroke();
+    if (m === 0) { // Calibre pesado: caño largo y grueso con freno
+      line2([[-4, 0], [26, 0]], '#3a3f4b', 4.5); g.fillStyle = INK; g.fillRect(22, -4.5, 6, 9); g.fillRect(3, -6, 9, 4);
+    } else if (m === 1) { // Semiautomático: dos caños y cargador
+      line2([[-4, -3], [19, -3]], '#3a3f4b', 2.6); line2([[-4, 3], [19, 3]], '#3a3f4b', 2.6);
+      g.fillStyle = '#c98a3a'; g.fillRect(2, 5, 6, 8); g.strokeRect(2, 5, 6, 8);
+    } else if (m === 2) { // Rebote: caño con bobinas
+      line2([[-4, 0], [21, 0]], '#3a3f4b', 3.5);
+      g.strokeStyle = '#4fd1ff'; g.lineWidth = 2.2; for (const cx of [8, 13, 18]) { g.beginPath(); g.ellipse(cx, 0, 1.6, 4.5, 0, 0, TAU); g.stroke(); }
+      g.strokeStyle = INK;
+    } else {
+      g.strokeStyle = INK; g.lineWidth = 4; g.beginPath(); g.moveTo(-4, 0); g.lineTo(22, 0); g.stroke();
+      g.fillStyle = INK; g.fillRect(2, -5, 8, 4);
+    }
+    g.fillStyle = m === 2 ? '#2f4a63' : '#4b5d2a'; g.beginPath(); g.arc(-2, 0, 6, 0, TAU); g.fill(); g.lineWidth = 2; g.stroke();
   } else if (key === 'barco') {
     g.rotate(angle);
-    g.fillStyle = '#9a5a2c';
-    g.beginPath(); g.moveTo(r * 1.15, 0); g.quadraticCurveTo(r * 0.5, -r * 0.8, -r * 0.95, -r * 0.6); g.lineTo(-r * 0.95, r * 0.6); g.quadraticCurveTo(r * 0.5, r * 0.8, r * 1.15, 0); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = '#c98a52'; g.beginPath(); g.ellipse(-1, 0, r * 0.65, r * 0.38, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#2d3440'; g.fillRect(4, -3.5, 13, 7); g.strokeRect(4, -3.5, 13, 7);
-    g.strokeStyle = '#22304a'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(-5, 0); g.lineTo(-5, -15); g.stroke();
-    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(-4, -15); g.lineTo(7, -4); g.lineTo(-4, -2); g.closePath(); g.fill(); g.stroke();
+    const hull = (L, W, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(r * L, 0); g.quadraticCurveTo(r * 0.5, -r * W * 1.33, -r * 0.95, -r * W); g.lineTo(-r * 0.95, r * W); g.quadraticCurveTo(r * 0.5, r * W * 1.33, r * L, 0); g.closePath(); g.fill(); g.stroke(); };
+    if (m === 2) { // Torpedos: submarino
+      g.fillStyle = '#5a6b7d'; g.beginPath(); g.ellipse(0, 0, r * 1.15, r * 0.5, 0, 0, TAU); g.fill(); g.stroke();
+      g.fillStyle = '#7d8fa3'; g.beginPath(); g.ellipse(-2, 0, 5, 4, 0, 0, TAU); g.fill(); g.stroke();
+      g.lineWidth = 2; g.beginPath(); g.moveTo(-2, 0); g.lineTo(-2, -9); g.lineTo(2, -9); g.stroke();
+      g.fillStyle = gold ? '#ffc933' : '#ff5a5a'; g.beginPath(); g.arc(r * 0.8, 0, 2.5, 0, TAU); g.fill();
+    } else {
+      hull(m === 0 ? 1.25 : 1.15, m === 0 ? 0.7 : 0.6, m === 1 ? '#7a4a22' : '#9a5a2c');
+      g.fillStyle = '#c98a52'; g.beginPath(); g.ellipse(-1, 0, r * 0.65, r * 0.38, 0, 0, TAU); g.fill();
+      if (m === 0) { g.fillStyle = '#2d3440'; for (const cx of [-5, 4]) for (const sg of [-1, 1]) { g.fillRect(cx, sg * 9 - 2, 6, 4); } g.fillRect(6, -3, 12, 6); }
+      else if (m === 1) { line2([[0, 0], [24, 0]], '#c3c8cf', 2.5); g.fillStyle = '#c3c8cf'; g.beginPath(); g.moveTo(28, 0); g.lineTo(22, -4); g.lineTo(22, 4); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = '#b08850'; g.lineWidth = 2; g.beginPath(); g.arc(-6, 0, 3.5, 0, TAU); g.stroke(); g.strokeStyle = INK; }
+      else { g.fillStyle = '#2d3440'; g.fillRect(4, -3.5, 13, 7); g.strokeRect(4, -3.5, 13, 7); }
+      g.lineWidth = 2.5; g.beginPath(); g.moveTo(-5, 0); g.lineTo(-5, -15); g.stroke();
+      g.fillStyle = gold ? '#ffe9a8' : '#fff'; g.beginPath(); g.moveTo(-4, -15); g.lineTo(7, -4); g.lineTo(-4, -2); g.closePath(); g.fill(); g.stroke();
+      if (m === 0) { g.beginPath(); g.moveTo(6, 0); g.lineTo(6, -12); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(7, -12); g.lineTo(14, -5); g.lineTo(7, -3); g.closePath(); g.fill(); g.stroke(); }
+      if (gold) { g.fillStyle = '#ffc933'; g.beginPath(); g.moveTo(-5, -15); g.lineTo(-12, -13); g.lineTo(-5, -11); g.closePath(); g.fill(); }
+    }
   }
   g.restore();
   if (tiers && (tiers[0] || tiers[1])) {
@@ -2091,21 +2200,23 @@ function startPlacing(key) {
   $('tip').textContent = G.money < c ? `Te faltan $${c - Math.floor(G.money)} para ${TW[key].art} ${TW[key].name}.` : `Tocá ${where} para ubicar ${TW[key].art} ${TW[key].name}. Esc o clic derecho para cancelar.`;
   renderShop();
 }
-function select(tw) {
-  selected = tw; selTree = null; renderInfo();
-  if (tw && window.innerWidth <= 900) { try { $('info').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
-}
-function selectTree(t) {
-  selected = null; selTree = t; renderInfo();
-  if (window.innerWidth <= 900) { try { $('info').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
-}
+function select(tw) { selected = tw; selTree = null; renderInfo(); }
+function selectTree(t) { selected = null; selTree = t; renderInfo(); }
 
-function iconCanvas(cvs, key) {
+// Dibuja una torre en un canvas chico; con `tw` muestra el diseño de su rama y nivel
+function iconCanvas(cvs, key, tw) {
   const g = cvs.getContext('2d'); const s = cvs.width / 48;
   g.setTransform(s, 0, 0, s, 0, 0); g.clearRect(0, 0, 48, 48);
   const prevRot = ROT; ROT = false;
-  drawTower(g, key, 24, 22, -Math.PI / 4, null, 0, 1);
+  drawTower(g, key, 24, tw ? 24 : 22, -Math.PI / 4, null, 0, 1, false, tw ? Object.assign({ id: 0, bornT: -9, kickT: -9 }, tw) : null);
   ROT = prevRot;
+}
+// El panel se abre sobre el mapa, del lado contrario a la torre (en celular, abajo o arriba)
+function placeInfo(x) {
+  const el = $('info');
+  el.classList.remove('left', 'right', 'sheet', 'top');
+  if (ROT) el.classList.add('sheet', ...(x > LW * 0.55 ? ['top'] : []));
+  else el.classList.add(x > LW / 2 ? 'left' : 'right');
 }
 
 function renderShop() {
@@ -2136,7 +2247,7 @@ function renderInfo() {
   const el = $('info');
   if (selTree && !selTree.cut) {
     const c = treeCost(selTree);
-    el.hidden = false;
+    el.hidden = false; placeInfo(selTree.x); el.classList.add('short');
     el.innerHTML = `<div class="info-head"><div class="grow"><h3>Árbol</h3><small>Tapa lugar y la visión de las torres</small></div><button class="btn small x" id="infoClose" aria-label="Cerrar">✕</button></div>
       <div class="info-row"><button class="btn small green" id="cutBtn" data-cost="${c}">Talar por $${c}</button></div>`;
     $('infoClose').onclick = () => select(null);
@@ -2151,46 +2262,53 @@ function renderInfo() {
   selTree = null;
   if (!selected || !G.towers.includes(selected)) { selected = null; el.hidden = true; el.innerHTML = ''; return; }
   const tw = selected, T = TW[tw.key];
-  el.hidden = false;
-  let h = `<div class="info-head"><canvas width="96" height="96"></canvas><div class="grow"><h3>${T.name}</h3><small>${tw.pops} capas reventadas</small></div><button class="btn small x" id="infoClose" aria-label="Cerrar">✕</button></div>`;
-  if (tw.high) h += `<div class="high-note">En la colina: ve todo el mapa por encima de los obstáculos y pega +1.</div>`;
+  el.hidden = false; placeInfo(tw.x); el.classList.remove('short');
   const U = UPG[tw.key];
   const pips = (n, on) => `<div class="pips">${Array.from({ length: n }, (_, i) => `<i class="${i < on ? 'on' : ''}"></i>`).join('')}</div>`;
-  const upBtn = (attr, name, desc, cost) => `<button class="up" ${attr} data-cost="${cost}"><span class="up-name">${name}</span><span class="up-desc">${desc}</span><span class="up-cost">$${cost}</span></button>`;
-  // Modo de ataque
-  h += `<div class="sec-t">Modo de ataque</div>`;
-  if (tw.mode < 0) {
-    h += `<p class="tip">Elegí cómo ataca. Después no se puede cambiar.</p><div class="opts">` + U.modes.map((m, i) => upBtn(`data-m="${i}"`, m.n, m.lv[0][1], modeCost(tw.key, 0))).join('') + `</div>`;
-  } else {
+  const slim = (attr, name, desc, cost) => `<button class="up slim" ${attr} data-cost="${cost}"><span class="txt"><span class="up-name">${name}</span><span class="up-desc">${desc}</span></span><span class="up-cost">$${cost}</span></button>`;
+  const card = (attr, name, desc, cost, icon) => `<button class="oc" ${attr} data-cost="${cost}" title="${name}: ${desc}">${icon ? '<canvas width="72" height="72"></canvas>' : ''}<b>${name}</b><span>${desc}</span><em>$${cost}</em></button>`;
+  const modeName = tw.mode >= 0 ? ` · ${U.modes[tw.mode].n} ${'I'.repeat(tw.tiers[0])}` : '';
+  let h = `<div class="info-head"><canvas class="ic" width="96" height="96"></canvas><div class="grow"><h3>${T.name}</h3><small>${tw.pops} capas${modeName}</small></div><button class="btn small x" id="infoClose" aria-label="Cerrar">✕</button></div>`;
+  if (tw.high) h += `<div class="high-note">En la colina: ve todo el mapa y pega +1.</div>`;
+  // Modo de ataque: tres ramas con dibujo de cómo queda la torre
+  h += `<div class="sec-t">Modo de ataque${tw.mode < 0 ? '<span>Elegí uno, no se cambia</span>' : ''}</div>`;
+  if (tw.mode < 0) h += `<div class="opts3">` + U.modes.map((m, i) => card(`data-m="${i}"`, m.n, m.lv[0][1], modeCost(tw.key, 0), true)).join('') + `</div>`;
+  else {
     const m = U.modes[tw.mode], lvl = tw.tiers[0];
     h += `<div class="chosen"><b>${m.n}</b>${pips(3, lvl)}</div>`;
-    h += lvl < 3 ? upBtn(`data-m="${tw.mode}"`, m.lv[lvl][0], m.lv[lvl][1], modeCost(tw.key, lvl)) : `<div class="up done"><span class="up-name">Rama completa</span></div>`;
-    h += `<div class="owned">Tiene: ${m.lv.slice(0, lvl).map(l => l[0]).join(', ')}</div>`;
+    h += lvl < 3 ? slim(`data-m="${tw.mode}"`, m.lv[lvl][0], m.lv[lvl][1], modeCost(tw.key, lvl)) : `<div class="up done"><span class="up-name">Rama completa</span></div>`;
   }
   // Potenciador
-  h += `<div class="sec-t">Potenciador</div>`;
-  if (tw.pot < 0) {
-    h += `<div class="opts">` + U.pots.map((pk, i) => upBtn(`data-p="${i}"`, POTS[pk].n, POTS[pk].d[0], potCost(tw.key, 0))).join('') + `</div>`;
-  } else {
+  h += `<div class="sec-t">Potenciador${tw.pot < 0 ? '<span>Elegí uno, no se cambia</span>' : ''}</div>`;
+  if (tw.pot < 0) h += `<div class="opts3">` + U.pots.map((pk, i) => card(`data-p="${i}"`, POTS[pk].n, POTS[pk].d[0], potCost(tw.key, 0), false)).join('') + `</div>`;
+  else {
     const P = POTS[U.pots[tw.pot]], lvl = tw.tiers[1];
     h += `<div class="chosen"><b>${P.n}</b>${pips(2, lvl)}</div>`;
-    h += lvl < 2 ? upBtn(`data-p="${tw.pot}"`, `${P.n} II`, P.d[1], potCost(tw.key, 1)) : `<div class="up done"><span class="up-name">Potenciador completo</span></div>`;
+    h += lvl < 2 ? slim(`data-p="${tw.pot}"`, `${P.n} II`, P.d[1], potCost(tw.key, 1)) : `<div class="up done"><span class="up-name">Potenciador completo</span></div>`;
   }
   h += `<div class="info-row">`;
   if (['proj', 'bomb', 'hitscan'].includes(tw.s.kind)) h += `<button class="btn small" id="tgtBtn">Apunta a ${TARGETS[tw.target]}</button>`;
   h += `<button class="btn small red" id="sellBtn">Vender $${sellValue(tw)}</button></div>`;
   el.innerHTML = h;
-  iconCanvas(el.querySelector('canvas'), tw.key);
+  iconCanvas(el.querySelector('canvas.ic'), tw.key, tw);
+  el.querySelectorAll('.oc[data-m]').forEach(b => iconCanvas(b.querySelector('canvas'), tw.key, { mode: +b.dataset.m, tiers: [1, 0] }));
   $('infoClose').onclick = () => select(null);
-  el.querySelectorAll('.up[data-m]').forEach(b => b.addEventListener('click', () => { if (buyMode(tw, +b.dataset.m)) renderInfo(); else toast('No te alcanza la plata'); }));
-  el.querySelectorAll('.up[data-p]').forEach(b => b.addEventListener('click', () => { if (buyPot(tw, +b.dataset.p)) renderInfo(); else toast('No te alcanza la plata'); }));
+  el.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { if (buyMode(tw, +b.dataset.m)) renderInfo(); else toast('No te alcanza la plata'); }));
+  el.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { if (buyPot(tw, +b.dataset.p)) renderInfo(); else toast('No te alcanza la plata'); }));
   const tb = $('tgtBtn'); if (tb) tb.onclick = () => { tw.target = TORDER[(TORDER.indexOf(tw.target) + 1) % 4]; tb.textContent = `Apunta a ${TARGETS[tw.target]}`; };
   $('sellBtn').onclick = () => { G.money += sellValue(tw); G.towers = G.towers.filter(t => t !== tw); toast(`Vendiste ${T.art} ${T.name}`); select(null); };
   refreshAfford();
+  fitInfo();
+}
+// Si el mapa es bajo, el panel se compacta solo para no necesitar barra de desplazamiento
+function fitInfo() {
+  const el = $('info'); el.classList.remove('tight', 'tighter');
+  const over = () => el.scrollHeight > el.clientHeight + 1;
+  if (over()) { el.classList.add('tight'); if (over()) el.classList.add('tighter'); }
 }
 
 function refreshAfford() {
-  document.querySelectorAll('#info .up[data-cost]').forEach(b => { b.disabled = G.money < +b.dataset.cost; });
+  document.querySelectorAll('#info [data-cost]').forEach(b => { if (b.id !== 'cutBtn') b.disabled = G.money < +b.dataset.cost; });
   const cut = document.getElementById('cutBtn'); if (cut) cut.disabled = G.money < +cut.dataset.cost;
   renderShop();
 }
@@ -2561,7 +2679,8 @@ $('mSound').addEventListener('click', () => { SND.on = !SND.on; try { localStora
 setDay(TODAY);
 newGame(true);
 renderHeader(); renderSoundBtn(); renderMenu();
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => { resize(); if (selected || selTree) renderInfo(); });
+try { document.fonts.ready.then(() => resize()); } catch (e) {}
 resize(); renderShop(); renderControls(); updateHUD();
 let last = performance.now(), acc = 0;
 function frame(t) {
@@ -2588,7 +2707,7 @@ requestAnimationFrame(frame);
 initOnline();
 
 // Para pruebas automáticas
-window.__gel = { get G() { return G; }, get MAP() { return MAP; }, get ROUNDS() { return ROUNDS; }, TW, GEL, get MOD() { return MOD; }, step, startRound, placeTower, buyMode, buyPot, placeError, newGame, loadDay, price, MAPTYPES, UPG, get ALLOWED() { return ALLOWED; }, play, showMenu, draw, losClear: (x0, y0, x1, y1) => !losBlocked(MAP.blk, x0, y0, x1, y1), onHill };
+window.__gel = { get G() { return G; }, get MAP() { return MAP; }, get ROUNDS() { return ROUNDS; }, TW, GEL, get MOD() { return MOD; }, step, startRound, placeTower, buyMode, buyPot, placeError, newGame, loadDay, price, MAPTYPES, UPG, get ALLOWED() { return ALLOWED; }, play, showMenu, draw, iconCanvas, losClear: (x0, y0, x1, y1) => !losBlocked(MAP.blk, x0, y0, x1, y1), onHill };
 })();
 </script>
 
