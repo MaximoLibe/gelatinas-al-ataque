@@ -209,11 +209,13 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
 .info .up.done { min-height: 0; padding: 6px 9px; }
 .info .info-row .btn { font-size: 14px; padding: 5px 8px; }
 .info.short { bottom: auto; }
-.info.tight .oc span { display: none; }
-.info.tight .oc canvas { width: 30px; height: 30px; }
+.info.no-desc .oc span, .info.no-icon .oc canvas { display: none; }
+.info.no-desc .oc canvas { width: 30px; height: 30px; }
+.info.no-icon .oc span { -webkit-line-clamp: 2; }
 .info.tight .up.slim .up-desc { -webkit-line-clamp: 1; }
-.info.tighter .oc canvas, .info.tighter .sec-t span, .info.tighter .high-note { display: none; }
-.info.tighter .info-head canvas { width: 32px; height: 32px; }
+.info.tight .sec-t span, .info.tight .high-note { display: none; }
+.info.tight .info-head canvas { width: 32px; height: 32px; }
+.info.tight .info-head small { display: none; }
 
 /* Jugo: combo, golpe al perder vidas, entradas animadas */
 .combo { position: absolute; right: 12px; top: 10px; font-family: var(--display); font-size: 24px; color: #ffd43b; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); pointer-events: none; }
@@ -282,6 +284,92 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
   .pill svg { width: 22px; height: 22px; }
   #playBtn { font-size: 19px; }
   .icon-btn { width: 40px; height: 40px; }
+}
+/* Celular: todo en una sola pantalla, sin bajar */
+@media (max-width: 640px) {
+  body { padding-block: 6px 8px; }
+  .app { gap: 6px; }
+  header { flex-wrap: nowrap; gap: 6px; }
+  header .day { display: none; }
+  .logo { font-size: 20px; -webkit-text-stroke-width: 1.5px; text-shadow: 0 2px 0 var(--ink); flex: 1; min-width: 0; white-space: nowrap; }
+  .head-btns { gap: 4px; }
+  #soundBtn { display: none; }
+  .icon-btn { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); border-width: 2.5px; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .game { gap: 6px; }
+  .stage { gap: 6px; }
+  .hud { gap: 5px; flex-wrap: nowrap; }
+  .pill { font-size: 15px; padding: 1px 9px 1px 4px; border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); gap: 4px; }
+  .pill svg { width: 19px; height: 19px; }
+  .pill.round { padding-left: 9px; }
+  .board { border-width: 2.5px; border-radius: 14px; box-shadow: 0 3px 0 var(--ink); }
+  .controls { gap: 5px; flex-wrap: nowrap; }
+  #playBtn { font-size: 16px; padding: 7px 8px; flex: 1 1 auto; min-width: 0; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+  #speedBtn { font-size: 16px; padding: 7px 8px; min-width: 48px; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+  .auto { font-size: 12px; padding: 6px 7px; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); gap: 4px; white-space: nowrap; }
+  .auto input { width: 15px; height: 15px; }
+  .next { flex-wrap: nowrap; overflow: hidden; white-space: nowrap; font-size: 11.5px; gap: 4px; }
+  .side .panel { padding: 5px; border-radius: 14px; border-width: 2.5px; box-shadow: 0 3px 0 var(--ink); }
+  .side .panel h3, .side .tip { display: none; }
+  .shop { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .tcard { padding: 3px 1px 4px; border-width: 2px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); }
+  .tcard canvas { width: 30px; height: 30px; }
+  .tcard .tn { display: none; }
+  .tcard .tp { font-size: 12px; }
+  .tcard.locked .tp { font-size: 10px; }
+}
+/* Celular en horizontal: mapa a la izquierda, columna de controles a la derecha */
+@media (orientation: landscape) and (max-height: 520px) {
+  body { padding-block: 4px; }
+  .app { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) 206px; grid-template-areas: "board hdr" "board hud" "board shop" "board ctl"; grid-template-rows: auto auto auto 1fr; column-gap: 8px; row-gap: 5px; align-items: start; }
+  .game, .stage { display: contents; }
+  header { grid-area: hdr; gap: 4px; flex-wrap: nowrap; }
+  header .logo, header .day { display: none; }
+  .head-btns { gap: 4px; width: 100%; justify-content: space-between; }
+  .icon-btn { width: 36px; height: 32px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); border-width: 2.5px; font-size: 16px; }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .hud { grid-area: hud; gap: 4px; flex-wrap: wrap; }
+  .pill { font-size: 14px; padding: 1px 8px 1px 3px; border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); gap: 3px; }
+  .pill svg { width: 17px; height: 17px; }
+  .pill.round { margin-left: 0; padding-left: 8px; }
+  .board { grid-area: board; align-self: center; justify-self: center; border-width: 2.5px; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+  .controls { grid-area: ctl; gap: 4px; flex-wrap: wrap; }
+  #playBtn { flex: 1 1 100%; font-size: 15px; padding: 6px 8px; border-radius: 11px; box-shadow: 0 3px 0 var(--ink); }
+  #speedBtn { font-size: 15px; padding: 5px 8px; min-width: 44px; border-radius: 11px; box-shadow: 0 3px 0 var(--ink); }
+  .auto { flex: 1; font-size: 12px; padding: 5px 7px; border-radius: 11px; box-shadow: 0 3px 0 var(--ink); gap: 4px; white-space: nowrap; }
+  .auto input { width: 15px; height: 15px; }
+  .next { display: none; }
+  .side { grid-area: shop; }
+  .side .panel { padding: 5px; border-radius: 12px; border-width: 2.5px; box-shadow: 0 3px 0 var(--ink); }
+  .side .panel h3, .side .tip { display: none; }
+  .shop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .tcard { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 2px 1px 3px; gap: 0; border-width: 2px; border-radius: 9px; box-shadow: 0 2px 0 var(--ink); }
+  .tcard canvas { width: 26px; height: 26px; }
+  .tcard .tn, .tcard .td { display: none; }
+  .tcard .tp { font-size: 11.5px; }
+  .tcard.locked .tp { font-size: 9.5px; }
+  .banner { font-size: 30px; }
+  .menu-card { width: min(760px, 100%); display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "logo logo" "day play" "day btns" "day today"; grid-template-rows: auto auto auto 1fr; gap: 8px 12px; padding: 12px; align-items: start; }
+  .mt span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-card > .logo { grid-area: logo; font-size: 30px; }
+  .menu-sub { display: none; }
+  .menu-day { grid-area: day; padding: 8px 10px; gap: 4px; }
+  #mPlay { grid-area: play; font-size: 20px; padding: 10px; }
+  #mToday { grid-area: today; }
+  .menu-btns { grid-area: btns; }
+  .menu-btns .btn { font-size: 14px; padding: 6px 8px; }
+  .md-towers { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .mt { font-size: 9.5px; }
+  .mt canvas { width: 28px; height: 28px; }
+  dialog { max-height: 92vh; }
+}
+@media (max-width: 640px) and (max-height: 780px) {
+  .menu-card { padding: 14px; gap: 8px; }
+  .logo.big { font-size: 34px; }
+  .menu-day { padding: 8px 10px; gap: 4px; }
+  .mt canvas { width: 30px; height: 30px; }
+  .btn.big { font-size: 20px; padding: 9px 12px; }
+  .menu-btns .btn { font-size: 14px; padding: 6px 8px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: .01s !important; } }
 </style>
@@ -1525,18 +1613,36 @@ function applyView(g, ox, oy) {
 }
 function upright(g) { if (ROT) g.rotate(-Math.PI / 2); }
 
+const LANDQ = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
 function resize() {
   const board = cv.parentElement, stage = board.parentElement;
   const availW = stage.clientWidth;
-  ROT = availW < 640 && window.innerWidth <= 900;
-  // En compu el mapa se achica para que todo entre en la ventana sin bajar
-  if (!ROT && window.innerWidth > 900) {
+  const land = LANDQ.matches;
+  // Mapa parado solo en celular vertical; en horizontal y en compu va acostado
+  ROT = !land && window.innerWidth <= 640 && window.innerHeight > window.innerWidth;
+  if (land) {
+    // Celular horizontal: el mapa ocupa todo el alto, a la izquierda de la columna de controles
+    const colW = document.querySelector('.app').clientWidth - 214;
+    const maxH = window.innerHeight - 10;
+    board.style.width = Math.floor(Math.max(240, Math.min(colW, (maxH - 5) * LW / LH + 5))) + 'px';
+  } else if (!ROT && window.innerWidth > 900) {
+    // En compu el mapa se achica para que todo entre en la ventana sin bajar
     const top = board.getBoundingClientRect().top + window.scrollY;
     const ctr = document.querySelector('.controls'), nx = document.getElementById('next');
     const below = (ctr ? ctr.offsetHeight : 60) + (nx ? Math.max(nx.offsetHeight, 22) : 22) + 20 + 28;
     const maxH = window.innerHeight - top - below;
     const outer = Math.max(460, Math.min(availW, (maxH - 6) * LW / LH + 6));
     board.style.width = Math.floor(outer) + 'px';
+  } else if (window.innerWidth <= 900) {
+    // En celular (una sola columna) el mapa se achica para que la tienda también entre en pantalla
+    board.style.width = '';
+    const rect = board.getBoundingClientRect(), app = document.querySelector('.app').getBoundingClientRect();
+    const top = rect.top + window.scrollY;
+    const below = app.bottom - rect.bottom + 8;
+    const maxH = window.innerHeight - top - below - 2;
+    const aspect = ROT ? LH / LW : LW / LH;
+    const outer = Math.max(200, Math.min(availW, (maxH - 5) * aspect + 5));
+    if (outer < availW - 1) board.style.width = Math.floor(outer) + 'px';
   } else board.style.width = '';
   const w = board.clientWidth;
   DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -2301,10 +2407,12 @@ function renderInfo() {
   fitInfo();
 }
 // Si el mapa es bajo, el panel se compacta solo para no necesitar barra de desplazamiento
+// En pantallas táctiles no hay "pasar el mouse": ahí se esconde primero el dibujito y queda la descripción
 function fitInfo() {
-  const el = $('info'); el.classList.remove('tight', 'tighter');
+  const el = $('info'), steps = matchMedia('(pointer: coarse)').matches ? ['no-icon', 'tight', 'no-desc'] : ['no-desc', 'tight', 'no-icon'];
+  el.classList.remove(...steps);
   const over = () => el.scrollHeight > el.clientHeight + 1;
-  if (over()) { el.classList.add('tight'); if (over()) el.classList.add('tighter'); }
+  for (const s of steps) { if (!over()) break; el.classList.add(s); }
 }
 
 function refreshAfford() {
@@ -2681,7 +2789,8 @@ newGame(true);
 renderHeader(); renderSoundBtn(); renderMenu();
 window.addEventListener('resize', () => { resize(); if (selected || selTree) renderInfo(); });
 try { document.fonts.ready.then(() => resize()); } catch (e) {}
-resize(); renderShop(); renderControls(); updateHUD();
+renderShop(); renderControls(); updateHUD(); resize();
+requestAnimationFrame(() => resize());
 let last = performance.now(), acc = 0;
 function frame(t) {
   const dt = Math.min(0.1, (t - last) / 1000); last = t;
