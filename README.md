@@ -11,9 +11,21 @@ Abrí `index.html` en cualquier navegador. No necesita instalar nada.
 - Cada torre elige un **modo de ataque** (3 niveles) y un **potenciador** (2 niveles).
 - Árboles, rocas y colinas tapan la visión de las torres. Solo el Francotirador sube a las colinas.
 - El Barco solo va en el agua.
-- Hay 7 tipos de mapa: Pradera, Barro y hielo, Dos entradas, Túneles, El Ocho, Portales e Islas.
+- Hay 10 tipos de mapa: Camino largo, Barro y hielo, Dos entradas, Túneles, El Ocho, Portales, Islas, Cruce, Río y puente, y Espiral.
 
-Atajos: teclas 1 a 6 para elegir torre, Espacio para empezar la ronda, F para cambiar la velocidad, Esc para cancelar.
+Atajos: teclas 1 a 5 para elegir torre, Espacio para empezar la ronda, F para cambiar la velocidad, Esc para cancelar.
+
+## Novedades desde el 19/11/2026
+
+Los mapas de antes de esa fecha se generan igual que siempre, así sus rankings siguen valiendo. Desde el 19/11:
+
+- **Mapas nuevos:** Cruce (dos caminos que se cruzan), Río y puente (el Barco navega el río) y Espiral (termina en el centro).
+- **Ambientes:** pradera, desierto (tormentas de arena que achican el alcance), nieve (más rápidas, pero el hielo dura más), volcán (lagos de lava y erupciones) y noche (se ve menos sin un Faro).
+- **Torres nuevas:** Rayo (salta de gelatina en gelatina), Faro (mejora a las torres de alrededor) y Granja (da plata al terminar cada ronda). Cada día hay 5 de las 9.
+- **Gelatinas nuevas:** Cometa (rapidísima), Voladora (vuela derecho, sin seguir el camino) y Curandera (devuelve capas a las de alrededor).
+- **Eventos:** algunas rondas traen un caso especial: Fiebre del oro, Estampida, Niebla espesa, Lluvia de burbujas, Viento en contra o Lluvia de meteoros.
+- **Tecnologías:** antes de la ronda 1 y después de las rondas 10, 20 y 30 se elige una mejora para toda la partida.
+- **Reglas nuevas:** Inflación, Bandada, Hospital y descuentos para las torres nuevas.
 
 ## Notas
 
