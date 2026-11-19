@@ -171,6 +171,16 @@ dialog p, dialog li { color: var(--ink-soft); }
 dialog strong { color: var(--ink); }
 dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
 .dlg-x { float: right; }
+.menu-card { position: relative; }
+.menu-x { position: absolute; top: 10px; right: 10px; z-index: 1; }
+.stats { display: flex; flex-wrap: wrap; gap: 3px 4px; flex: none; align-items: flex-start; align-content: flex-start; min-height: 0; }
+.stats span { display: inline-flex; align-items: baseline; gap: 3px; background: #fff; border: 1.5px solid rgba(34,48,74,.25); border-radius: 7px; padding: 0 5px; font-size: 11px; line-height: 1.5; white-space: nowrap; }
+.stats span i { font-style: normal; color: var(--ink-soft); }
+.stats span b { font-weight: 900; font-variant-numeric: tabular-nums; }
+.stats span.tag { background: #eaf6ff; border-color: rgba(37,99,235,.35); color: #1d4ed8; font-weight: 800; }
+.stats span.chg b, .stats span.tag.chg { color: #15803d; }
+.stats span.chg { border-color: #46c75a; background: #effbe9; }
+.info.tight .stats span { font-size: 10px; padding: 0 4px; }
 .bestiary { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .beast { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 6px 8px; }
 .beast canvas { width: 44px; height: 44px; }
@@ -388,6 +398,7 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
 
 <div class="menu" id="menu">
   <div class="menu-card">
+    <button class="btn small menu-x" id="mClose" aria-label="Volver a la partida" title="Volver a la partida" hidden>✕</button>
     <h1 class="logo big">Gelatinas <span>al Ataque</span></h1>
     <p class="menu-sub">Un tower defense nuevo cada día</p>
     <div class="menu-day">
@@ -497,6 +508,7 @@ dialog ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px;
     <li><strong>Eventos:</strong> algunas rondas traen un caso especial, como Fiebre del oro o Lluvia de meteoros. Se avisa en "Próxima ronda".</li>
     <li><strong>Tecnologías:</strong> antes de la ronda 1 y después de las rondas 10, 20 y 30 elegís una mejora para toda la partida.</li>
     <li>Tocá una torre para <strong>mejorarla</strong>. Elegís un <strong>modo de ataque</strong> entre tres (cambia cómo ataca, y tiene 3 niveles) y un <strong>potenciador</strong> entre tres (2 niveles). Una vez elegidos no se cambian.</li>
+    <li><strong>Vender:</strong> lo que compraste en la pausa (antes de empezar la ronda) se devuelve entero. Una vez que arranca la ronda, se devuelve el 70%.</li>
     <li>Tocá un árbol para <strong>talarlo</strong>.</li>
     <li>En el celular, tocá el mapa una vez para ver dónde va la torre y otra vez para confirmar.</li>
   </ul>
@@ -1850,6 +1862,9 @@ function startRound() {
   for (const gr of ROUNDS[G.round - 1]) for (let i = 0; i < gr.count; i++) q.push({ time: gr.start + i * gr.spacing, t: gr.type, camo: gr.camo, regen: gr.regen, shield: gr.shield, hp: gr.hp });
   q.sort((a, b) => a.time - b.time);
   G.spawnQ = q; G.roundT = 0; G.inRound = true; G.roundLeaked = false;
+  // Al arrancar la ronda, lo comprado en la pausa pasa a valer como usado
+  for (const tw of G.towers) tw.fresh = 0;
+  if (selected) renderInfo();
   G.ev = ROUNDS[G.round - 1].ev || null; G.meteorT = 2; G.eruptT = 10;
   const boss = ROUNDS[G.round - 1].some(g => g.type === 'G');
   if (G.ev) { showBanner(`¡${EVENTS[G.ev].name}!`, 'new'); toast(`Esta ronda: ${EVENTS[G.ev].desc}`, 3000); }
@@ -1979,6 +1994,7 @@ function placeTower(key, x, y) {
   const err = placeError(key, x, y); if (err) { toast(err); return null; }
   G.money -= c;
   const tw = makeTower(key, x, y, c);
+  tw.fresh = G.inRound ? 0 : c;
   G.towers.push(tw);
   addFx({ k: 'place', x, y });
   sfx.place(); tw.bornT = VT; burst(x, y, '#e8d9b5', 8, 120, 3.5);
@@ -2029,7 +2045,7 @@ function buyMode(tw, idx) {
   if (tw.mode >= 0 && idx !== tw.mode) return false;
   const lvl = tw.tiers[0]; if (lvl >= 3) return false;
   const c = modeCost(tw.key, lvl); if (G.money < c) return false;
-  G.money -= c; tw.spent += c; tw.mode = idx; tw.tiers[0]++; if (tw.key === 'faro') restatAll(); else restat(tw);
+  G.money -= c; tw.spent += c; if (!G.inRound) tw.fresh = (tw.fresh || 0) + c; tw.mode = idx; tw.tiers[0]++; if (tw.key === 'faro') restatAll(); else restat(tw);
   addFx({ k: 'place', x: tw.x, y: tw.y }); sfx.buy(); tw.bornT = VT; burst(tw.x, tw.y, '#ffd43b', 14, 170, 3, 'star'); floatText(tw.x, tw.y - 24, '¡Mejora!', '#ffd43b', 18);
   return true;
 }
@@ -2037,11 +2053,12 @@ function buyPot(tw, idx) {
   if (tw.pot >= 0 && idx !== tw.pot) return false;
   const lvl = tw.tiers[1]; if (lvl >= 2) return false;
   const c = potCost(tw.key, lvl); if (G.money < c) return false;
-  G.money -= c; tw.spent += c; tw.pot = idx; tw.tiers[1]++; if (tw.key === 'faro') restatAll(); else restat(tw);
+  G.money -= c; tw.spent += c; if (!G.inRound) tw.fresh = (tw.fresh || 0) + c; tw.pot = idx; tw.tiers[1]++; if (tw.key === 'faro') restatAll(); else restat(tw);
   addFx({ k: 'place', x: tw.x, y: tw.y }); sfx.buy(); tw.bornT = VT; burst(tw.x, tw.y, '#4fd1ff', 14, 170, 3, 'star'); floatText(tw.x, tw.y - 24, '¡Potenciado!', '#8fe3ff', 18);
   return true;
 }
-const sellValue = tw => Math.floor(tw.spent * 0.7);
+// Lo gastado en la pausa (antes de empezar la ronda) se devuelve entero; lo demás, al 70%
+const sellValue = tw => { const f = Math.min(tw.fresh || 0, tw.spent); return Math.floor(f + (tw.spent - f) * 0.7); };
 const treeCost = t => Math.round((40 + t.r * 4) / 5) * 5;
 
 // ---------- Dibujo ----------
@@ -2858,6 +2875,16 @@ function draw() {
   applyView(g, ox, oy);
   drawPortals(g);
   if (selected) drawVision(g, selected.x, selected.y, Object.assign({}, selected.s, { range: effRange(selected) }), selected.high, true);
+  if (selected && hoverPrev && hoverPrev.range !== Infinity) {
+    // Alcance que tendría con la mejora que está bajo el mouse
+    const R2 = hoverPrev.range * envMul(selected.high, selected.lit);
+    if (Math.abs(R2 - effRange(selected)) > 0.5) {
+      const pu = 0.5 + 0.5 * Math.sin(VT * 6);
+      g.beginPath(); g.arc(selected.x, selected.y, R2, 0, Math.PI * 2);
+      g.fillStyle = `rgba(255,201,51,${0.1 + pu * 0.06})`; g.fill();
+      g.strokeStyle = '#ffc933'; g.lineWidth = 3.5; g.setLineDash([10, 6]); g.lineDashOffset = -VT * 30; g.stroke(); g.setLineDash([]); g.lineDashOffset = 0;
+    }
+  }
   if (selTree && !selTree.cut) { g.strokeStyle = '#fff'; g.lineWidth = 3; g.setLineDash([6, 4]); g.beginPath(); g.arc(selTree.x, selTree.y, selTree.r + 5, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
   for (const tw of G.towers) drawTower(g, tw.key, tw.x, tw.y, tw.angle, tw.tiers, tw.spin + (tw.key === 'escarcha' ? VT : 0), 1, tw.high, tw);
   // Posición suavizada entre el paso anterior y el actual (si saltó lejos, como en un portal, no se suaviza)
@@ -3007,6 +3034,67 @@ function renderShop() {
   }
 }
 
+// ---------- Estadísticas de la torre y vista previa de mejoras ----------
+let hoverPrev = null;
+function previewStats(tw, kind, idx) {
+  const t = Object.assign({}, tw, { tiers: tw.tiers.slice() });
+  if (kind === 'm') { t.mode = idx; t.tiers[0]++; } else { t.pot = idx; t.tiers[1]++; }
+  return computeStats(t);
+}
+function statList(tw, s) {
+  const k = tw.key, vals = [], tags = [];
+  const R = s.range === Infinity ? Infinity : s.range * envMul(tw.high, tw.lit);
+  const num = v => String(Math.round(v * 10) / 10).replace('.', ',');
+  const pct = v => '+' + Math.round(v * 100) + '%';
+  if (k === 'granja') {
+    vals.push(['Plata por ronda', '$' + Math.round(s.income * (s.incomeMul || 1))]);
+    if (s.grow) vals.push(['Crece por ronda', Math.round(s.grow * 100) + '%'], ['Tope', '×' + num(s.growCap)]);
+    if (s.bees) vals.push(['Abejas', s.bees], ['Daño', s.dmg], ['Alcance', Math.round(R)], ['Pican por seg', num(1 / s.rate)]);
+  } else if (k === 'faro') {
+    vals.push(['Radio', Math.round(R)]);
+    if (s.auraRange) vals.push(['Alcance a las de cerca', pct(s.auraRange)]);
+    if (s.auraRate) vals.push(['Velocidad a las de cerca', pct(s.auraRate)]);
+    if (s.auraDmg) vals.push(['Daño a las de cerca', '+' + s.auraDmg]);
+    if (s.auraPierce) vals.push(['Atraviesan', '+' + s.auraPierce]);
+    if (s.auraCamo) tags.push('Las de cerca ven camufladas');
+    if (s.auraArmor) tags.push('Las de cerca rompen corazas');
+    if (s.decamo) tags.push('Saca camuflaje');
+    if (s.deshield) tags.push('Rompe escudos');
+    if (s.mark) tags.push('Marca: +1 de daño');
+  } else {
+    if (s.dmg > 0) vals.push(['Daño', s.dmg + (s.bigDmg ? ` (+${s.bigDmg} a grandes)` : '')]);
+    if (s.kind === 'proj' || s.kind === 'radial') vals.push(['Atraviesa', s.pierce]);
+    if (s.kind === 'proj' && s.count > 1) vals.push(['Proyectiles', s.count]);
+    if (s.kind === 'radial') vals.push(['Púas', s.n]);
+    if (s.kind === 'bomb') vals.push(['Explosión', Math.round(s.blast)], ['Pega a', s.pierce]);
+    else if (s.explodeHit) vals.push(['Explosión', Math.round(s.explodeHit)]);
+    if (s.cluster) vals.push(['Bombitas', s.cluster]);
+    if (s.kind === 'chain') { vals.push(['Saltos', s.jumps]); if (s.multi > 1) vals.push(['Rayos', s.multi]); }
+    if (s.bounce) vals.push(['Rebotes', s.bounce]);
+    if (s.kind === 'hail') vals.push(['Objetivos', s.targets]);
+    if (s.kind === 'freeze') vals.push(['Congela', num(s.freeze * (BIO.freezeMul || 1)) + ' s']);
+    if (s.kind === 'field') vals.push(['Frena', Math.round((1 - s.slowF) * 100) + '%']);
+    if (s.burn) vals.push(['Quema', s.burn + ' s']);
+    if (s.stun) vals.push(['Aturde', num(s.stun) + ' s']);
+    vals.push(['Alcance', R === Infinity ? 'todo el mapa' : Math.round(R)]);
+    if (s.kind !== 'field') vals.push(['Ataques por seg', num(1 / s.rate)]);
+    if (s.decamo) tags.push('Saca camuflaje');
+  }
+  if (s.camo && k !== 'faro') tags.push('Ve camufladas');
+  if (s.armor && k !== 'faro') tags.push('Rompe corazas');
+  if (k !== 'granja' && k !== 'faro' && !needsLOS(s, tw.high)) tags.push('No necesita ver');
+  if (tw.lit && k !== 'faro' && k !== 'granja') tags.push('Con ayuda del Faro');
+  return { vals, tags };
+}
+// Con `prev` muestra cómo quedaría después de la mejora (lo que cambia, en verde)
+function statsHtml(tw, s, prev) {
+  const a = statList(tw, s), b = prev ? statList(tw, prev) : a;
+  const old = new Map(a.vals.map(([n, v]) => [n, String(v)]));
+  return b.vals.map(([n, v]) => {
+    const was = old.get(n), ch = prev && was !== String(v);
+    return `<span class="${ch ? 'chg' : ''}"><i>${n}</i><b>${ch && was != null ? `${was} → ${v}` : v}</b></span>`;
+  }).join('') + b.tags.map(t => `<span class="tag${prev && !a.tags.includes(t) ? ' chg' : ''}">${t}</span>`).join('');
+}
 // Línea chica debajo del nombre en el panel de la torre
 function towerLine(tw) {
   const s = tw.s;
@@ -3041,6 +3129,7 @@ function renderInfo() {
   const modeName = tw.mode >= 0 ? ` · ${U.modes[tw.mode].n} ${'I'.repeat(tw.tiers[0])}` : '';
   let h = `<div class="info-head"><canvas class="ic" width="96" height="96"></canvas><div class="grow"><h3>${T.name}</h3><small>${towerLine(tw)}${modeName}</small></div><button class="btn small x" id="infoClose" aria-label="Cerrar">✕</button></div>`;
   if (tw.high) h += `<div class="high-note">En la colina: ve todo el mapa y pega +1.</div>`;
+  h += `<div class="stats" id="twStats">${statsHtml(tw, tw.s)}</div>`;
   // Modo de ataque: tres ramas con dibujo de cómo queda la torre
   h += `<div class="sec-t">Modo de ataque${tw.mode < 0 ? '<span>Elegí uno, no se cambia</span>' : ''}</div>`;
   if (tw.mode < 0) h += `<div class="opts3">` + U.modes.map((m, i) => card(`data-m="${i}"`, m.n, m.lv[0][1], modeCost(tw.key, 0), true)).join('') + `</div>`;
@@ -3059,13 +3148,23 @@ function renderInfo() {
   }
   h += `<div class="info-row">`;
   if (['proj', 'bomb', 'hitscan', 'chain'].includes(tw.s.kind)) h += `<button class="btn small" id="tgtBtn">Apunta a ${TARGETS[tw.target]}</button>`;
-  h += `<button class="btn small red" id="sellBtn">Vender $${sellValue(tw)}</button></div>`;
+  const sv = sellValue(tw), full = sv >= tw.spent && tw.spent > 0;
+  h += `<button class="btn small red" id="sellBtn" title="${full ? 'Comprada en esta pausa: se devuelve todo' : 'Se devuelve el 70% de lo gastado (lo comprado en esta pausa, entero)'}">Vender $${sv}${full ? ' (todo)' : ''}</button></div>`;
+  hoverPrev = null;
   el.innerHTML = h;
   iconCanvas(el.querySelector('canvas.ic'), tw.key, tw);
   el.querySelectorAll('.oc[data-m]').forEach(b => iconCanvas(b.querySelector('canvas'), tw.key, { mode: +b.dataset.m, tiers: [1, 0] }));
   $('infoClose').onclick = () => select(null);
   el.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { if (buyMode(tw, +b.dataset.m)) renderInfo(); else toast('No te alcanza la plata'); }));
   el.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { if (buyPot(tw, +b.dataset.p)) renderInfo(); else toast('No te alcanza la plata'); }));
+  // Al pasar el mouse por una mejora: cómo quedarían las estadísticas y el alcance
+  el.querySelectorAll('[data-m], [data-p]').forEach(b => {
+    b.addEventListener('pointerenter', () => {
+      hoverPrev = b.dataset.m != null ? previewStats(tw, 'm', +b.dataset.m) : previewStats(tw, 'p', +b.dataset.p);
+      const st = $('twStats'); if (st) st.innerHTML = statsHtml(tw, tw.s, hoverPrev);
+    });
+    b.addEventListener('pointerleave', () => { hoverPrev = null; const st = $('twStats'); if (st) st.innerHTML = statsHtml(tw, tw.s); });
+  });
   const tb = $('tgtBtn'); if (tb) tb.onclick = () => { tw.target = TORDER[(TORDER.indexOf(tw.target) + 1) % 4]; tb.textContent = `Apunta a ${TARGETS[tw.target]}`; };
   $('sellBtn').onclick = () => { G.money += sellValue(tw); G.towers = G.towers.filter(t => t !== tw); if (tw.key === 'faro') restatAll(); toast(`Vendiste ${T.art} ${T.name}`); select(null); };
   refreshAfford();
@@ -3146,6 +3245,7 @@ $('speedBtn').addEventListener('click', cycleSpeed);
 $('autoChk').checked = autoStart;
 $('autoChk').addEventListener('change', ev => { autoStart = ev.target.checked; try { localStorage.setItem('gel-auto', autoStart ? '1' : '0'); } catch (e) {} if (autoStart && !G.inRound) startRound(); });
 document.addEventListener('keydown', ev => {
+  if (MENU && ev.key === 'Escape' && SAVED && !document.querySelector('dialog[open]')) { closeMenu(); return; }
   if (MENU || document.querySelector('dialog[open]') || ev.target.tagName === 'INPUT') return;
   if (ev.key === 'Escape') { if (placing) cancelPlacing(); else select(null); }
   else if (ev.key === ' ' && (ev.target === document.body || ev.target === cv)) { ev.preventDefault(); startRound(); }
@@ -3219,7 +3319,15 @@ function showOver() {
 }
 function restart() {
   $('overlay').hidden = true; clearInterval(cdTimer);
-  newGame(false); lastHud = ''; drawBackground(); renderShop(); renderInfo(); renderControls();
+  newGame(false); lastHud = ''; drawBackground(); renderShop(); renderInfo(); renderControls(); renderTechPill();
+  askFirstTech();
+}
+// En los mapas nuevos, cada partida arranca eligiendo una tecnología
+function askFirstTech() {
+  if (!V2 || G.demo) return;
+  G.techWait = true;
+  const game = G;
+  setTimeout(() => { if (G === game && G.techWait && !MENU && !G.over) openTech(); }, 900);
 }
 
 // ---------- Ranking online ----------
@@ -3461,30 +3569,44 @@ function renderMenu() {
   }
   const rec = LOCAL.days[dateKey];
   $('mBest').textContent = rec && rec.best ? `Tu mejor en este mapa: ${reachedLabel(rec.best).toLowerCase()} (${rec.attempts} ${rec.attempts === 1 ? 'intento' : 'intentos'}).` : 'Todavía no jugaste este mapa.';
-  $('mPlay').textContent = old ? `Jugar el mapa del ${labelOf(dateKey)}` : 'Jugar el desafío de hoy';
+  if (SAVED && SAVED.key !== dateKey) SAVED = null;
+  $('mClose').hidden = !SAVED;
+  $('mPlay').textContent = SAVED ? 'Empezar una partida nueva' : old ? `Jugar el mapa del ${labelOf(dateKey)}` : 'Jugar el desafío de hoy';
   renderSoundBtn();
 }
+// Si se abre el menú en medio de una partida, la partida queda guardada y se puede volver con la cruz
+let SAVED = null;
 function showMenu() {
+  const busy = !MENU && G && !G.demo && !G.over && (G.round > 1 || G.inRound || G.towers.length > 0);
+  SAVED = busy ? { G, key: dateKey, cut: MAP.trees.map(t => t.cut) } : null;
+  if ($('techDlg').open) $('techDlg').close();
   MENU = true; clearInterval(cdTimer);
   $('overlay').hidden = true;
   newGame(true); lastHud = ''; drawBackground();
-  renderShop(); renderInfo(); renderControls(); renderMenu();
+  renderShop(); renderInfo(); renderControls(); renderMenu(); renderTechPill();
   $('menu').hidden = false;
 }
+function closeMenu() {
+  if (!SAVED || SAVED.key !== dateKey) return;
+  G = SAVED.G;
+  MAP.trees.forEach((t, i) => { t.cut = !!SAVED.cut[i]; });
+  refreshBlockers(MAP); for (const tw of G.towers) tw.blk = towerBlockers(tw);
+  SAVED = null; MENU = false; $('menu').hidden = true;
+  placing = null; ghost = null; selected = null; selTree = null;
+  lastHud = ''; drawBackground(); renderShop(); renderInfo(); renderControls(); renderTechPill();
+  if (G.techWait) openTech();
+}
 function play() {
+  SAVED = null;
   MENU = false; $('menu').hidden = true;
   newGame(false); lastHud = ''; drawBackground();
   renderShop(); renderInfo(); renderControls(); renderTechPill();
   showBanner(mapName(), '');
   toast(`Torres de hoy: ${shopKeys().map(k => TW[k].name).join(', ')}`, 3500);
-  if (V2) { G.techWait = true; setTimeout(() => { if (G.techWait && !MENU && !G.over) openTech(); }, 1200); }
+  askFirstTech();
 }
-let menuArm = 0;
-$('menuBtn').addEventListener('click', () => {
-  const busy = !G.over && (G.round > 1 || G.inRound || G.towers.length > 0);
-  if (busy && performance.now() - menuArm > 3000) { menuArm = performance.now(); toast('Tocá el botón de nuevo para ir al menú (se pierde esta partida)', 3000); return; }
-  showMenu();
-});
+$('menuBtn').addEventListener('click', showMenu);
+$('mClose').addEventListener('click', closeMenu);
 $('mPlay').addEventListener('click', play);
 $('mToday').addEventListener('click', () => loadDay(TODAY));
 $('mDays').addEventListener('click', () => { renderDays(); $('daysDlg').showModal(); });
@@ -3525,7 +3647,7 @@ requestAnimationFrame(frame);
 initOnline();
 
 // Para pruebas automáticas
-window.__gel = { get G() { return G; }, get MAP() { return MAP; }, get ROUNDS() { return ROUNDS; }, TW, GEL, get MOD() { return MOD; }, step, startRound, placeTower, buyMode, buyPot, placeError, newGame, loadDay, price, MAPTYPES, UPG, get ALLOWED() { return ALLOWED; }, play, showMenu, draw, iconCanvas, losClear: (x0, y0, x1, y1) => !losBlocked(MAP.blk, x0, y0, x1, y1), onHill, pickTech, techOffer, get BIO() { return BIO; }, restatAll, shopKeys };
+window.__gel = { get G() { return G; }, get MAP() { return MAP; }, get ROUNDS() { return ROUNDS; }, TW, GEL, get MOD() { return MOD; }, step, startRound, placeTower, buyMode, buyPot, placeError, newGame, loadDay, price, MAPTYPES, UPG, get ALLOWED() { return ALLOWED; }, play, showMenu, draw, iconCanvas, losClear: (x0, y0, x1, y1) => !losBlocked(MAP.blk, x0, y0, x1, y1), onHill, pickTech, techOffer, get BIO() { return BIO; }, restatAll, shopKeys, select, showMenu, closeMenu, onGameOver, get hoverPrev() { return hoverPrev; } };
 })();
 </script>
 
